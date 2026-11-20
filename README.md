@@ -37,13 +37,23 @@ Open http://localhost:5173
 The Vite development server proxies `/api` requests to `http://localhost:8080`, avoiding browser CORS and cookie issues. If the backend uses another port, set `API_PROXY_TARGET` before starting Vite (PowerShell example: `$env:API_PROXY_TARGET = 'http://localhost:8081'`). Restart both servers after backend/API or Vite proxy changes so each process loads the latest code.
 
 ### Terminal 3 — Python analysis (optional)
-Start the backend first, then:
+Start the backend first. The script prompts for the library admin credentials; alternatively set `LIBRARY_ADMIN_USERNAME`, `LIBRARY_ADMIN_PASSWORD`, and optionally `LIBRARY_API_URL` (the default API URL is `http://localhost:8080/api`).
 ```bash
 cd python-analysis
 python -m pip install -r requirements.txt
 python analyze.py
 ```
 Charts and the cleaned CSV are saved in `python-analysis/output/`.
+
+## Deploy on Render
+The repository includes a Render Blueprint (`render.yaml`) and a Dockerfile that builds the Vite frontend into the Spring Boot app. The deployed frontend and API share one HTTPS origin, so login sessions work without a separate frontend/API CORS setup. H2 data is stored on a mounted persistent disk.
+
+1. Push this repository to GitHub and open [Render Blueprints](https://dashboard.render.com/blueprints).
+2. Select **New Blueprint Instance**, connect `akshathak2411/Library_management1`, and deploy the `render.yaml` blueprint.
+3. When prompted, set strong, unique values for `ADMIN_PASSWORD` and `STUDENT_DEMO_PASSWORD`. These are deployment secrets; do not commit them.
+4. Wait for the service health check at `/api/health` to pass, then open the HTTPS URL Render assigns to the service.
+
+This Blueprint uses a paid Render web service and a 1 GB persistent disk; Render's free web services do not provide persistent disks. Keep the disk attached to preserve the H2 database across deployments. Seeded demo students use the `STUDENT_DEMO_PASSWORD` secret; newly registered students use the password entered by the admin.
 
 ## Demo login credentials
 The application creates these demo accounts on first startup. On an existing database, the previous seeded `admin` / `Admin@123` account is migrated to `Admin` / `admin@123`; existing student account passwords are preserved:
@@ -86,6 +96,6 @@ Each endpoint accepts optional `department`, `startDate`, and `endDate` query pa
 If Reading Analysis shows an API error after updating the project, stop the existing Java backend and Vite processes, then start them again using the commands above. An old Java process can return 404 for new analytics routes, and an old Vite process may not have loaded the `/api` proxy.
 
 ## Important project notes
-- The frontend and backend communicate through HTTP requests. The browser does not connect directly to the database.
-- The reading-pattern endpoint is left available to the local Python analysis script. Restrict it with authentication before deploying the project publicly.
+- The browser does not connect directly to the database.
+- Student and analytics APIs, including the reading-pattern endpoint, require the appropriate authenticated session.
 - This is a learning prototype, not a production-ready library system. Use HTTPS, stronger validation, CSRF protection, password reset and production secrets before real deployment.

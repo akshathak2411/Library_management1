@@ -1,19 +1,30 @@
+import getpass
+import os
 from pathlib import Path
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 
-API = "http://localhost:8080/api/reports/reading-patterns"
+API_BASE = os.getenv("LIBRARY_API_URL", "http://localhost:8080/api").rstrip("/")
 OUTPUT = Path(__file__).parent / "output"
 OUTPUT.mkdir(exist_ok=True)
 
 def main():
+    username = os.getenv("LIBRARY_ADMIN_USERNAME") or input("Library admin username: ").strip()
+    password = os.getenv("LIBRARY_ADMIN_PASSWORD") or getpass.getpass("Library admin password: ")
+    session = requests.Session()
     try:
-        response = requests.get(API, timeout=10)
+        login = session.post(
+            f"{API_BASE}/auth/login",
+            json={"username": username, "password": password, "role": "ADMIN"},
+            timeout=10,
+        )
+        login.raise_for_status()
+        response = session.get(f"{API_BASE}/reports/reading-patterns", timeout=10)
         response.raise_for_status()
         records = response.json()
     except requests.RequestException as exc:
-        print("Could not reach the Java backend. Start it on port 8080 first.")
+        print("Could not authenticate or retrieve borrowing data from the Java backend.")
         print(exc)
         return
 

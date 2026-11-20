@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: library-management-system
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    disk:
+      name: library-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:h2:file:/var/data/librarydb;AUTO_SERVER=TRUE
+      - key: ADMIN_USERNAME
+        value: Admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: STUDENT_DEMO_PASSWORD
+        sync: false

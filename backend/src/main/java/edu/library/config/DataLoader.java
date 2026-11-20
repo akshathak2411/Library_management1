@@ -6,31 +6,40 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.time.LocalDate;
 import java.util.Optional;
 
 @Configuration
 public class DataLoader {
-    @Bean CommandLineRunner seed(BookRepository books, StudentRepository students, LoanRepository loans, LibraryUserRepository users) {
+    @Bean CommandLineRunner seed(
+            BookRepository books,
+            StudentRepository students,
+            LoanRepository loans,
+            LibraryUserRepository users,
+            @Value("${ADMIN_USERNAME:Admin}") String adminUsername,
+            @Value("${ADMIN_PASSWORD:admin@123}") String adminPassword,
+            @Value("${STUDENT_DEMO_PASSWORD:Student@123}") String studentDemoPassword) {
         return args -> {
             BCryptPasswordEncoder encoder=new BCryptPasswordEncoder();
-            Optional<LibraryUser> admin=users.findByUsername("Admin");
+            Optional<LibraryUser> admin=users.findByUsername(adminUsername);
             if(admin.isEmpty()) {
-                admin=users.findByUsername("admin");
+                admin=users.findByUsername("Admin").or(() -> users.findByUsername("admin"));
                 if(admin.isPresent()) {
                     LibraryUser existingAdmin=admin.get();
-                    existingAdmin.setUsername("Admin");
+                    existingAdmin.setUsername(adminUsername);
                 }
             }
             if(admin.isPresent()) {
                 LibraryUser existingAdmin=admin.get();
-                if(!encoder.matches("admin@123",existingAdmin.getPasswordHash())) {
-                    existingAdmin.setPasswordHash(encoder.encode("admin@123"));
+                if(!encoder.matches(adminPassword,existingAdmin.getPasswordHash())) {
+                    existingAdmin.setPasswordHash(encoder.encode(adminPassword));
                 }
+                existingAdmin.setUsername(adminUsername);
                 users.save(existingAdmin);
             } else {
-                users.save(new LibraryUser("Admin",encoder.encode("admin@123"),"ADMIN",null));
+                users.save(new LibraryUser(adminUsername,encoder.encode(adminPassword),"ADMIN",null));
             }
             if(books.count()==0) {
                 Book b1=books.save(new Book("Wings of Fire","A.P.J. Abdul Kalam","Biography",5));
@@ -53,7 +62,7 @@ public class DataLoader {
                         .filter(x->x.getEmail().equalsIgnoreCase(email)).findFirst().orElse(null);
                 if(student!=null && users.findByStudent_Id(student.getId()).isEmpty()
                         && !users.existsByUsername(student.getStudentCode())) {
-                    users.save(new LibraryUser(student.getStudentCode(),encoder.encode("Student@123"),"STUDENT",student));
+                    users.save(new LibraryUser(student.getStudentCode(),encoder.encode(studentDemoPassword),"STUDENT",student));
                 }
             }
         };
